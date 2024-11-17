@@ -1,3 +1,11 @@
+using ChatWithEncryption.Data;
+using ChatWithEncryption.Hubs;
+using ChatWithEncryption.Models;
+using ChatWithEncryption.Services;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+
 namespace ChatWithEncryption
 {
     public class Program
@@ -8,6 +16,36 @@ namespace ChatWithEncryption
 
             // Add services to the container.
             builder.Services.AddControllersWithViews();
+  
+           
+
+            builder.Services.AddIdentity<User, IdentityRole>(options =>
+            {
+                options.Password.RequireDigit = false;          
+                options.Password.RequireLowercase = false;        
+                options.Password.RequireUppercase = false;       
+                options.Password.RequireNonAlphanumeric = false;  
+                options.Password.RequiredLength = 1;               
+                options.User.RequireUniqueEmail = false;
+            })  .AddEntityFrameworkStores<ApplicationDbContext>()
+                .AddDefaultTokenProviders();
+
+            builder.Services.AddScoped<AuthServices>(); 
+
+            builder.Services.AddSignalR();
+
+
+            builder.Services.AddDbContext<ApplicationDbContext>(options =>
+                options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+            builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+                .AddCookie(options =>
+                {
+                    options.LoginPath = "/Auth/Login"; 
+                    options.LogoutPath = "/Auth/Logout"; 
+                    options.SlidingExpiration = true;  
+                    options.ExpireTimeSpan = TimeSpan.FromDays(7);  
+                });
 
             var app = builder.Build();
 
@@ -15,7 +53,6 @@ namespace ChatWithEncryption
             if (!app.Environment.IsDevelopment())
             {
                 app.UseExceptionHandler("/Home/Error");
-                // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
                 app.UseHsts();
             }
 
@@ -24,11 +61,14 @@ namespace ChatWithEncryption
 
             app.UseRouting();
 
-            app.UseAuthorization();
+            app.UseAuthentication(); 
+            app.UseAuthorization();  
 
             app.MapControllerRoute(
                 name: "default",
                 pattern: "{controller=Home}/{action=Index}/{id?}");
+
+            app.MapHub<ChatHub>("/chatHub");
 
             app.Run();
         }
