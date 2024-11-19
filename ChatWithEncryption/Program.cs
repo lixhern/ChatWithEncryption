@@ -1,5 +1,6 @@
 using ChatWithEncryption.Data;
 using ChatWithEncryption.Hubs;
+//using ChatWithEncryption.Middlewares;
 using ChatWithEncryption.Models;
 using ChatWithEncryption.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -55,7 +56,7 @@ namespace ChatWithEncryption
                 app.UseExceptionHandler("/Home/Error");
                 app.UseHsts();
             }
-
+            //app.UseMiddleware<AuthMiddleware>();
             app.UseHttpsRedirection();
             app.UseStaticFiles();
 

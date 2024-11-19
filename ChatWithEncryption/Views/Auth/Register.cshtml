@@ -1,0 +1,27 @@
+﻿@model ChatWithEncryption.Models.RegisterDTO
+<h2>Регистрация</h2>
+
+<form asp-action="Register" method="post">
+    <div class="mb-3">
+        <label for="Username" class="form-label">Имя пользователя:</label>
+        <input asp-for="Username" class="form-control">
+        <span asp-validation-for="Username"></span>
+    </div>
+    <div class="mb-3">
+        <label for="Password" class="form-label">Пароль:</label>
+        <input asp-for="Password" type="password" class="form-control" id="exampleInputPassword1">
+        <span asp-validation-for="Password"></span>
+    </div>
+    <div class="mb-3">
+        <label for="ConfirmPassword" class="form-label">Подтвердите пароль:</label>
+        <input asp-for="ConfirmPassword" type="password" class="form-control" id="exampleInputPassword1">
+        <span asp-validation-for="ConfirmPassword"></span>
+    </div>
+    <button type="submit" class="btn btn-primary">Submit</button>
+</form>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}

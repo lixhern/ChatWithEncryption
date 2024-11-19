@@ -21,7 +21,6 @@ namespace ChatWithEncryption.Services
             _userManager = userManager;
         }
 
-        // Регистрация пользователя
         public async Task<IdentityResult> RegisterUserAsync(RegisterDTO registerDTO)
         {
             var user = new User
@@ -39,7 +38,6 @@ namespace ChatWithEncryption.Services
 
             if (user == null)
             {
-                // Запись в лог, если пользователь не найден
                 Console.WriteLine($"User not found: {loginDto.UserName}");
                 return SignInResult.Failed;
             }
@@ -47,14 +45,12 @@ namespace ChatWithEncryption.Services
             var result = await _signInManager.PasswordSignInAsync(user, loginDto.Password, false, false);
             if (!result.Succeeded)
             {
-                // Запись ошибок для дальнейшего анализа
                 Console.WriteLine("Login failed.");
             }
 
             return result;
         }
 
-        // Логика для выхода из системы
         public async Task LogoutAsync()
         {
             await _signInManager.SignOutAsync();

@@ -1,0 +1,6 @@
+﻿@model ChatWithEncryption.Models.User
+
+<li class="list-group-item">
+    <strong>Name:</strong> @Model.UserName
+    <button class="btn btn-primary" onclick="startChat('@Model.Id')">Начать чат</button>
+</li>

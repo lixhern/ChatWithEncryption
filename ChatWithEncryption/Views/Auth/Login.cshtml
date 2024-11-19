@@ -1,0 +1,22 @@
+﻿@model ChatWithEncryption.Models.LoginDto;
+
+<h2>Вход</h2>
+
+<form asp-action="Login" method="post">
+    <div class="mb-3">
+        <label for="Username" class="form-label">Имя пользователя:</label>
+        <input asp-for="UserName"class="form-control" >
+    </div>
+    <div class="mb-3">
+        <label for="Password" class="form-label">Пароль:</label>
+        <input asp-for="Password" type="password" class="form-control" id="exampleInputPassword1">
+    </div>
+    <button type="submit" class="btn btn-primary">Submit</button>
+</form>
+
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}

@@ -1,8 +1,353 @@
 ﻿@{
-    ViewData["Title"] = "Home Page";
+    ViewData["Title"] = "Chat";
+}
+@model User
+@section LeftPanel {
+    <h5>Contacts</h5>
+    <div class="input-group mb-3">
+        <form id="search-form">
+            <div class="input-group mb-3">
+                <input type="text" id="search-user" name="id" class="form-control" placeholder="Search by ID">
+                <button class="btn btn-outline-secondary" type="submit">Search</button>
+            </div>
+        </form>
+    </div>
+    <ul class="list-group" id="contact-list">
+        @if (Model != null)
+        {
+            <li class="list-group-item">
+                <strong>Name:</strong> @Model.UserName
+                <button class="btn btn-primary" onclick="startChat('@Model.Id')">Начать чат</button>
+            </li>
+        }
+        else
+        {
+            <li class="list-group-item">Пользователь не найден</li>
+        }
+    </ul>
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+
+
+<!-- Окно чата -->
+<div id="chat-container" class="d-flex flex-column" style="display: none; width: 80%; height: 80vh; margin: 0 auto; border: 1px solid #ccc; border-radius: 8px; overflow: hidden; background-color: #f8f9fa;">
+    <!-- Окно статуса -->
+    <div class="card" id="chat-request-status" style="display: none;">
+        <div class="card-body">
+            <p id="chat-request-message">Запрос на чат отправлен. Ожидайте подтверждения...</p>
+            <button id="accept-chat-request" class="btn btn-success" style="display: none;">Принять</button>
+            <button id="decline-chat-request" class="btn btn-danger">Отклонить</button>
+        </div>
+    </div>
+    <!-- История сообщений -->
+    <div id="messages" class="flex-grow-1 p-3" style="overflow-y: auto;"></div>
+
+    <!-- Ввод сообщения -->
+    <div class="border-top p-3 bg-light">
+        <div class="input-group">
+            <input type="text" id="message-input" class="form-control" placeholder="Введите сообщение...">
+            <button id="send-button" class="btn btn-primary">Отправить</button>
+            <div class="btn-group" role="group">
+                <button id="end-chat-button" class="btn btn-danger ms-2">Завершить чат</button>
+                <button id="download-chat" class="btn btn-secondary">Скачать чат</button>
+            </div>
+        </div>
+    </div>
 </div>
+
+
+
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script>
+
+    <script>
+        const connection = new signalR.HubConnectionBuilder()
+            .withUrl('/chatHub') // URL signalR huba
+            .configureLogging(signalR.LogLevel.Information)
+            .build();
+
+        let senderName = $("#userName").text();
+        
+        let currentKey = null; // secretkey this chat
+        let partnerId = null; 
+
+        let partnerName = null;
+        
+        
+
+
+        $("#download-chat").click(function () {
+            let chatContent = "";
+            $("#messages .message").each(function () {
+                let messageText = $(this).find(".message-content").text();
+                chatContent += `${messageText}\n`;
+            });
+
+            const blob = new Blob([chatContent], { type: "text/plain;charset=utf-8" });
+
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = "chat.txt";
+
+            link.click();
+        });
+
+        $(document).ready(function () {
+            connection.start()
+                .then(() => console.log("Connected to SignalR hub"))
+                .catch(err => console.error("Error connecting to SignalR hub:", err));
+
+            $("#search-form").submit(function (event) {
+                event.preventDefault();
+                const userId = $("#search-user").val();
+
+                $.ajax({
+                    url: '@Url.Action("SearchById", "Home")',
+                    type: 'GET',
+                    data: { id: userId },
+                    success: function (result) {
+                        $("#contact-list").html(result);
+                    },
+                    error: function () {
+                        alert("Произошла ошибка при поиске пользователя.");
+                    }
+                });
+            });
+
+            $("#send-button").click(function () {
+                const message = $("#message-input").val();
+                if (message.trim() && currentKey) {
+                    finalMessage = `${senderName}: ${message}`
+                   // const encryptedMessage = encryptMessage(message, currentKey); 
+                   // connection.invoke("SendMessage", partnerId, encryptedMessage)
+                   //     .catch(err => console.error("Error sending message:", err));
+                    addMessageToChat(finalMessage, true);
+                    sendMessage(finalMessage);
+                    $("#message-input").val('');
+                }
+            });
+
+            $("#end-chat-button").click(function () {
+                connection.invoke("EndChat", partnerId)
+                    .then(() => {
+                        alert("Чат завершён.");
+                        endChat();
+                    });
+            });
+        });
+
+        //request for chat
+        connection.on("ReceiveChatRequest", function (requesterId) {
+            $("#chat-request-status").show();
+            $("#chat-request-message").text(`${requesterId} отправил вам запрос на чат.`);
+            $("#accept-chat-request").show();
+
+            // accept
+            $("#accept-chat-request").off("click").on("click", function () {
+                connection.invoke("AcceptChatRequest", requesterId)
+                    .then(() => {
+                        alert("Чат начался!");
+                        //currentKey = generateKey(); 
+                        partnerId = requesterId;
+                        connection.invoke("SendKey", requesterId, currentKey); // send key
+                        startChatUI();
+                    });
+            });
+
+            //decline
+            $("#decline-chat-request").off("click").on("click", function () {
+                connection.invoke("DeclineChatRequest", requesterId)
+                    .then(() => {
+                        alert("Вы отклонили запрос на чат.");
+                        $("#chat-request-status").hide();
+                    });
+            });
+        });
+
+        connection.on("ReceiveKey", function (key) {
+            console.log("Doo" + currentKey);
+            currentKey = key;
+            console.log(currentKey);
+            startChatUI();
+        });
+
+        connection.on("ChatStarted", function () {
+            alert("Чат начался!");
+            startChatUI();
+        });
+
+        connection.on("ChatEnded", function () {
+            alert("Чат завершён.");
+            endChat();
+        });
+
+
+        connection.on("ReceiveMessage", function (encryptedMessage, ivBase64) {
+            console.log("Received encrypted message:", encryptedMessage);  
+            console.log("Received IV:", ivBase64); 
+            if (typeof encryptedMessage !== 'string' || typeof ivBase64 !== 'string') {
+                console.error("Получены неверные данные для сообщения или IV");
+                return;
+            }
+
+            try {
+                const message = decryptMessage(encryptedMessage, ivBase64, currentKey);
+
+                const messageElement = `
+                    <div class="message received-message mb-2">
+                        <div class="message-content p-2">${message}</div>
+                    </div>`;
+
+                
+                $("#messages").append(messageElement);
+                //console.log(message.)
+
+                // avtoprokrytka
+                $("#messages").animate({ scrollTop: $("#messages")[0].scrollHeight }, 'slow');
+            } catch (error) {
+                console.error("Ошибка при расшифровке сообщения:", error);
+            }
+        });
+
+
+
+        function sendMessage(message) {
+            if (currentKey) {
+                // shifryy
+                var encrypted = encryptMessage(message, currentKey);
+
+                var decryptedMessage = decryptMessage(encrypted.message, encrypted.iv, currentKey);
+
+                console.log("Original message: ", message);
+                console.log("Decrypted message after encryption: ", decryptedMessage);
+                console.log("Iv: ", encrypted.iv);
+
+                if (decryptedMessage === message) {
+                    console.log("Encryption and decryption successful. Message is correct.");
+                } else {
+                    console.log("Mismatch! Something went wrong during encryption or decryption.");
+                }
+
+                connection.invoke("SendMessage", partnerId, encrypted.message, encrypted.iv, currentKey)
+                    .catch(err => console.error("Ошибка при отправке сообщения:", err));
+
+                console.log("Encrypted message sent: ", encrypted.message);
+            }
+        }
+
+
+        //start chat
+        function startChat(targetUserId) {
+            partnerId = targetUserId;
+            alert("Запрос на чат отправлен!");
+            $("#chat-request-status").show();
+            $("#chat-request-message").text("Запрос на чат отправлен. Ожидайте подтверждения...");
+            $("#accept-chat-request").hide();
+
+            connection.invoke("SendChatRequest", targetUserId)
+                .catch(err => console.error("Error sending chat request:", err));
+        }
+
+
+        function addMessageToChat(message, isSentByCurrentUser) {
+            const messageClass = isSentByCurrentUser ? "sent-message" : "received-message";
+            const messageElement = `
+                        <div class="message ${messageClass}">
+                            <div class="message-content">${message}</div>
+                        </div>`;
+            $("#messages").append(messageElement);
+            $("#messages").animate({ scrollTop: $("#messages")[0].scrollHeight }, 'slow');
+        }
+
+
+        /*function generateKey() {
+            return "ddddd"; // 
+        }*/
+
+        function encryptMessage(message, key) {
+            var iv = CryptoJS.lib.WordArray.random(16);  
+            var encrypted = CryptoJS.AES.encrypt(message, CryptoJS.enc.Base64.parse(key), { iv: iv });
+
+            return {
+                message: encrypted.ciphertext.toString(CryptoJS.enc.Base64), 
+                iv: iv.toString(CryptoJS.enc.Base64) 
+            };
+        }
+
+
+        function decryptMessage(encryptedMessage, iv, key) {
+            try {
+                
+                var ivBytes = CryptoJS.enc.Base64.parse(iv);  
+                var encryptedBytes = CryptoJS.enc.Base64.parse(encryptedMessage);  
+
+                // decrypt
+                var decrypted = CryptoJS.AES.decrypt(
+                    { ciphertext: encryptedBytes },
+                    CryptoJS.enc.Base64.parse(key),  // Ключ из Base64
+                    { iv: ivBytes }  // IV
+                );
+                console.log("KEY: ", key);
+                // to utf8
+                var decryptedMessage = decrypted.toString(CryptoJS.enc.Utf8);
+
+                if (!decryptedMessage) {
+                    throw new Error("Ошибка расшифровки. Возможно, неверный ключ или IV.");
+                }
+
+                return decryptedMessage;
+            } catch (error) {
+                console.error("Ошибка при расшифровке сообщения:", error.message);
+                return null;
+            }
+        }
+
+
+
+        /*function encryptMessage(message, key) {
+            const messageWithOwner = `${senderName}: ${message}`;
+            return btoa(messageWithOwner + "|" + key);
+        }
+
+        function decryptMessage(encryptedMessage, key) {
+            const decoded = atob(encryptedMessage);
+            const message = decoded.split("|")[0];
+            return message; 
+        }*/
+
+                
+/*
+        // Шифрование сообщения
+        function encryptMessageAES(message, key) {
+            const encrypted = CryptoJS.AES.encrypt(message, CryptoJS.enc.Utf8.parse(key), {
+                mode: CryptoJS.mode.ECB, // Используем режим ECB (или можно CBC с IV)
+                padding: CryptoJS.pad.Pkcs7,
+            });
+            return encrypted.toString(); // Возвращаем строку
+        }
+
+        // Расшифровка сообщения
+        function decryptMessageAES(encryptedMessage, key) {
+            const decrypted = CryptoJS.AES.decrypt(encryptedMessage, CryptoJS.enc.Utf8.parse(key), {
+                mode: CryptoJS.mode.ECB,
+                padding: CryptoJS.pad.Pkcs7,
+            });
+            return decrypted.toString(CryptoJS.enc.Utf8); // Возвращаем исходный текст
+        }
+*/
+        function startChatUI() {
+            $("#chat-request-status").hide();
+            $("#chat-container").show();
+        }
+
+        function endChat() {
+            $("#chat-container").hide();
+            $("#messages").html('');
+            currentKey = null;
+            partnerId = null;
+        }
+    </script>
+}

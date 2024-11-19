@@ -20,3 +20,44 @@ html {
 body {
   margin-bottom: 60px;
 }
+
+#messages {
+    padding: 10px;
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.message {
+    display: flex;
+    max-width: 70%;
+    margin-bottom: 8px;
+}
+
+    .message.received-message {
+        justify-content: flex-start;
+    }
+
+.message-content{
+    margin: 5px 0;
+    padding: 10px;
+    border-radius: 12px;
+    font-size: 14px;
+    line-height: 1.5;
+    word-wrap: break-word;
+}
+
+
+.message.sent-message .message-content {
+    background-color: #d1e7dd;
+    color: #0f5132;
+    align-self: flex-end;
+    border: 1px solid #badbcc;
+}
+
+.message.received-message .message-content {
+    background-color: #f8d7da;
+    color: #842029;
+    align-self: flex-start;
+    border: 1px solid #f5c2c7;
+}
