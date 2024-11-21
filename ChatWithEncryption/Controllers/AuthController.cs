@@ -20,14 +20,14 @@ namespace ChatWithEncryption.Controllers
         [HttpGet]
         public IActionResult Register()
         {
-            return View(); // Страница регистрации
+            return View();
         }
 
         [HttpPost]
         public async Task<IActionResult> Register(RegisterDTO registerDto)
         {
             if (!ModelState.IsValid)
-                return View(registerDto); // Если данные некорректны, возвращаем страницу с ошибками
+                return View(registerDto);
 
             var result = await _authService.RegisterUserAsync(registerDto);
 
@@ -39,13 +39,13 @@ namespace ChatWithEncryption.Controllers
                 return View(registerDto);
             }
 
-            return RedirectToAction("Login"); // Перенаправление на страницу логина
+            return RedirectToAction("Login");
         }
 
         [HttpGet]
         public IActionResult Login()
         {
-            return View(); // Страница логина
+            return View();
         }
 
         [HttpPost]
@@ -56,7 +56,7 @@ namespace ChatWithEncryption.Controllers
 
             var result = await _authService.LoginAsync(loginDto);
 
-            if (result.Succeeded)  // Проверяем, прошёл ли вход успешно
+            if (result.Succeeded)
             {
                 return RedirectToAction("Index", "Home");
             }
@@ -69,8 +69,8 @@ namespace ChatWithEncryption.Controllers
 
         public async Task<IActionResult> Logout()
         {
-            await _signInManager.SignOutAsync();  // Выход из системы
-            return RedirectToAction("Login", "Auth");  // Перенаправление на страницу входа
+            await _signInManager.SignOutAsync();
+            return RedirectToAction("Login", "Auth");  
         }
     }
 

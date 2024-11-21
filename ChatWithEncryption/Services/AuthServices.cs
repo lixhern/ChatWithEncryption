@@ -20,7 +20,7 @@ namespace ChatWithEncryption.Services
             _signInManager = signInManager;
             _userManager = userManager;
         }
-
+        //alg + sol + sh, pkdf2
         public async Task<IdentityResult> RegisterUserAsync(RegisterDTO registerDTO)
         {
             var user = new User

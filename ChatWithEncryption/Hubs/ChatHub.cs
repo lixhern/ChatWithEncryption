@@ -16,7 +16,6 @@
             // Хранение активных чатов
             private static readonly ConcurrentDictionary<string, string> ActiveChats = new(); // Key: User1, Value: User2
 
-
             //private static readonly ConcurrentDictionary<string, string> ChatKeys = new(); // Key: User1|User2, Value: EncryptionKey
 
             public ChatHub(ApplicationDbContext context)
@@ -63,7 +62,6 @@
                 //Console.WriteLine("---------------------");
                 //Console.WriteLine("---------------------");
 
-
                 // Отправить подтверждение чата и ключ участникам
                 await Clients.User(requesterId).SendAsync("ChatStarted");
                 await Clients.User(targetUserId).SendAsync("ChatStarted");
@@ -102,8 +100,8 @@
                 await Clients.User(partnerId).SendAsync("ChatEnded");
             }
 
-            // Отправка сообщения
 
+            // Отправка сообщения
             public async Task SendMessage(string targetUserId, string encryptedMessage, string ivBase64, string currentKey)
             {
                 var senderId = Context.UserIdentifier;
@@ -170,6 +168,7 @@
             {
                 using (var aes = Aes.Create())
                 {
+                    
                     aes.KeySize = 256;
                     aes.GenerateKey();
                     return Convert.ToBase64String(aes.Key);
